@@ -18,15 +18,13 @@
             <RowDefinition Height="8*"></RowDefinition>
             <RowDefinition Height="2*"></RowDefinition>
         </Grid.RowDefinitions>
-        <Grid Row="0" Background="Red">
+        <Grid Row="0" Background="#293042">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"></ColumnDefinition>
-                <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
-            <Image x:Name="LeftImage" Grid.Column="0" Margin="5" />
-            <Image x:Name="RightImage" Grid.Column="1" Margin="5" />
+            <Image x:Name="Image" Grid.Column="0" Margin="5" />
         </Grid>
-        <Grid Row="1" Background="Green">
+        <Grid Row="1" Background="#293042">
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                 <Button Command="{Binding OnClickCommand}" CommandParameter="Faces">Faces</Button>
                 <Button Command="{Binding OnClickCommand}" CommandParameter="Emotions">Emotions</Button>
