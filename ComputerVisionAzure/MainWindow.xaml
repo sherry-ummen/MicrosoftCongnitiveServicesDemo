@@ -6,7 +6,33 @@
         xmlns:local="clr-namespace:ComputerVisionAzure"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
+    <Window.Resources>
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Margin" Value="10 0 10 0"></Setter>
+            <Setter Property="Height" Value="30"></Setter>
+            <Setter Property="Width" Value="100"></Setter>
+        </Style>
+    </Window.Resources>
     <Grid>
-        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="8*"></RowDefinition>
+            <RowDefinition Height="2*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid Row="0" Background="Red">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Image x:Name="LeftImage" Grid.Column="0" Margin="5" />
+            <Image x:Name="RightImage" Grid.Column="1" Margin="5" />
+        </Grid>
+        <Grid Row="1" Background="Green">
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <Button>Faces</Button>
+                <Button>Emotions</Button>
+                <Button>Celebrities</Button>
+                <Button>Tags</Button>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
