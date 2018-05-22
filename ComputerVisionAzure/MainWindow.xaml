@@ -28,10 +28,10 @@
         </Grid>
         <Grid Row="1" Background="Green">
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <Button>Faces</Button>
-                <Button>Emotions</Button>
-                <Button>Celebrities</Button>
-                <Button>Tags</Button>
+                <Button Command="{Binding OnClickCommand}" CommandParameter="Faces">Faces</Button>
+                <Button Command="{Binding OnClickCommand}" CommandParameter="Emotions">Emotions</Button>
+                <Button Command="{Binding OnClickCommand}" CommandParameter="Celebrities">Celebrities</Button>
+                <Button Command="{Binding OnClickCommand}" CommandParameter="Tags">Tags</Button>
             </StackPanel>
         </Grid>
     </Grid>

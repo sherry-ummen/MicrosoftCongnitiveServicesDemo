@@ -12,6 +12,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using ComputerVisionAzure.Service;
+using Microsoft.ProjectOxford.Face.Contract;
+using OpenCvSharp.Extensions;
 
 namespace ComputerVisionAzure {
     /// <summary>
@@ -20,6 +23,11 @@ namespace ComputerVisionAzure {
     public partial class MainWindow : Window {
         public MainWindow() {
             InitializeComponent();
+            var viewModel = new MainWindowViewModel();
+            viewModel.OnResult += (result) => LeftImage.Source = (BitmapSource)result;
+            DataContext = viewModel;
         }
+
+
     }
 }
