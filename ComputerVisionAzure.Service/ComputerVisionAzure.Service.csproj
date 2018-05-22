@@ -144,6 +144,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Aggregation.cs" />
+    <Compile Include="CelebritiesResult.cs" />
     <Compile Include="ComputeVisionService.cs" />
     <Compile Include="MostSecuredKeys.cs" />
     <Compile Include="ResultEventArgs.cs" />

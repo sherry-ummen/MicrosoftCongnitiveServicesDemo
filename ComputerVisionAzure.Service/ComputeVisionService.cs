@@ -6,8 +6,11 @@ using System.Windows.Media.Imaging;
 using Microsoft.ProjectOxford.Face;
 using Microsoft.ProjectOxford.Face.Contract;
 using Microsoft.ProjectOxford.Vision;
+using Newtonsoft.Json;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
+using FaceAPI = Microsoft.ProjectOxford.Face;
+using VisionAPI = Microsoft.ProjectOxford.Vision;
 
 namespace ComputerVisionAzure.Service {
     internal class ComputeVisionService {
@@ -20,7 +23,7 @@ namespace ComputerVisionAzure.Service {
             new ImageEncodingParam(ImwriteFlags.JpegQuality, 60)
         };
 
-        private enum AppMode {
+        private enum RecognitionMode {
             Faces,
             Emotions,
             EmotionsWithClientFaceDetect,
@@ -38,12 +41,12 @@ namespace ComputerVisionAzure.Service {
         }
 
         public void SetupCamera() {
-            int cameraIndex = 1;
+            int cameraIndex = 0;
             double overrideFPS = 0;
             if (_reader != null && _reader.CaptureType == CaptureType.Camera) {
                 return;
             }
-            _reader = new VideoCapture(1);
+            _reader = new VideoCapture(cameraIndex);
             _fps = overrideFPS;
             if (Math.Abs(_fps) < 0.001) {
                 _fps = 30;
@@ -56,12 +59,32 @@ namespace ComputerVisionAzure.Service {
 
         public int Width { get; set; }
 
-
-        public event EventHandler<ResultEventArgs> NewResultAvailable;
-
         public async Task<BitmapSource> Analyze(string type) {
-            var result = await FacesAnalysisFunction(GetCurrentFrame);
-            return VisualizeResult(result);
+            RecognitionMode mode;
+            var result = Enum.TryParse(type, out mode);
+            Result analysis = null;
+            if (result) {
+                switch (mode) {
+                    case RecognitionMode.Faces: {
+                            analysis = await FacesAnalysisFunction(GetCurrentFrame);
+                            break;
+                        }
+                    case RecognitionMode.Emotions:
+                        analysis = await EmotionAnalysisFunction(GetCurrentFrame);
+                        break;
+                    case RecognitionMode.Tags:
+                        analysis = await TaggingAnalysisFunction(GetCurrentFrame);
+                        break;
+                    case RecognitionMode.Celebrities:
+                        analysis = await CelebrityAnalysisFunction(GetCurrentFrame);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            if (analysis == null) return null;
+            return VisualizeResult(analysis);
         }
 
         private VideoFrame GetCurrentFrame() {
@@ -90,6 +113,71 @@ namespace ComputerVisionAzure.Service {
             return new Result() { Faces = faces, Frame = frame };
         }
 
+        private async Task<Result> EmotionAnalysisFunction(Func<VideoFrame> videoFrame) {
+            // Encode image. 
+            var frame = videoFrame();
+            var jpg = frame.Image.ToMemoryStream(".jpg", g_jpegParams);
+            // Submit image to API. 
+            FaceAPI.Contract.Face[] faces = null;
+
+            // See if we have local face detections for this image.
+            var localFaces = (OpenCvSharp.Rect[])frame.UserData;
+            if (localFaces == null || localFaces.Count() > 0) {
+                // If localFaces is null, we're not performing local face detection.
+                // Use Cognigitve Services to do the face detection.
+                faces = await _faceClient.DetectAsync(
+                    jpg,
+                    /* returnFaceId= */ false,
+                    /* returnFaceLandmarks= */ false,
+                    new FaceAttributeType[1] { FaceAttributeType.Emotion });
+            } else {
+                // Local face detection found no faces; don't call Cognitive Services.
+                faces = new Face[0];
+            }
+
+            // Output. 
+            return new Result() {
+                Faces = faces.Select(e => CreateFace(e.FaceRectangle)).ToArray(),
+                // Extract emotion scores from results. 
+                EmotionScores = faces.Select(e => e.FaceAttributes.Emotion).ToArray(),
+                Frame = frame
+            };
+        }
+
+        private async Task<Result> TaggingAnalysisFunction(Func<VideoFrame> videoFrame) {
+            // Encode image. 
+            var frame = videoFrame();
+            var jpg = frame.Image.ToMemoryStream(".jpg", g_jpegParams);
+            // Submit image to API. 
+            var analysis = await _visionClient.GetTagsAsync(jpg);
+            // Count the API call. 
+            // Output. 
+            return new Result() { Tags = analysis.Tags, Frame = frame };
+        }
+
+        /// <summary> Function which submits a frame to the Computer Vision API for celebrity
+        ///     detection. </summary>
+        /// <param name="frame"> The video frame to submit. </param>
+        /// <returns> A <see cref="Task{LiveCameraResult}"/> representing the asynchronous API call,
+        ///     and containing the celebrities returned by the API. </returns>
+        private async Task<Result> CelebrityAnalysisFunction(Func<VideoFrame> videoFrame) {
+            // Encode image. 
+            var frame = videoFrame();
+            var jpg = frame.Image.ToMemoryStream(".jpg", g_jpegParams);
+            // Submit image to API. 
+            var result = await _visionClient.AnalyzeImageInDomainAsync(jpg, "celebrities");
+            // Count the API call. 
+            // Output. 
+            var celebs = JsonConvert.DeserializeObject<CelebritiesResult>(result.Result.ToString()).Celebrities;
+            return new Result() {
+                // Extract face rectangles from results. 
+                Faces = celebs.Select(c => CreateFace(c.FaceRectangle)).ToArray(),
+                // Extract celebrity names from results. 
+                CelebrityNames = celebs.Select(c => c.Name).ToArray(),
+                Frame = frame
+            };
+        }
+
         private BitmapSource VisualizeResult(Result result) {
             // Draw any results on top of the image. 
             BitmapSource visImage = result.Frame.Image.ToBitmapSource();
@@ -106,6 +194,27 @@ namespace ComputerVisionAzure.Service {
             visImage = Visualization.DrawTags(visImage, result.Tags);
 
             return visImage;
+        }
+
+        private FaceAPI.Contract.Face CreateFace(FaceAPI.Contract.FaceRectangle rect) {
+            return new FaceAPI.Contract.Face {
+                FaceRectangle = new FaceAPI.Contract.FaceRectangle {
+                    Left = rect.Left,
+                    Top = rect.Top,
+                    Width = rect.Width,
+                    Height = rect.Height
+                }
+            };
+        }
+        private FaceAPI.Contract.Face CreateFace(VisionAPI.Contract.FaceRectangle rect) {
+            return new FaceAPI.Contract.Face {
+                FaceRectangle = new FaceAPI.Contract.FaceRectangle {
+                    Left = rect.Left,
+                    Top = rect.Top,
+                    Width = rect.Width,
+                    Height = rect.Height
+                }
+            };
         }
 
         private void MatchAndReplaceFaceRectangles(Face[] faces, OpenCvSharp.Rect[] clientRects) {

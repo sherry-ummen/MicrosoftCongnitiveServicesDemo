@@ -7,7 +7,7 @@ using System.Windows.Input;
 using ComputerVisionAzure.Service;
 
 namespace ComputerVisionAzure {
-    internal class MainWindowViewModel : ViewModelBase {
+    internal class MainWindowViewModel {
         private readonly ComputeVisionService _computeVisionService;
         public Action<object> OnResult { get; set; }
 
